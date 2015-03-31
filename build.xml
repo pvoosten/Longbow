@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Copyright 2007 Philip van Oosten (Mentoring Systems BVBA)
+	
+	Licensed under the Apache License, Version 2.0 (the "License"); you may not
+	use this file except in compliance with the License. You may obtain a copy of
+	the License at
+	
+	http://www.apache.org/licenses/LICENSE-2.0
+	
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+	WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+	License for the specific language governing permissions and limitations under
+	the License.
+-->
+
+<project name="Longbow" default="build-all">
+
+	<!-- 
+		There are no system dependencies. All libraries 
+		used to build Longbow are contained in the Subversion 
+		repository as binaries.
+	-->
+
+	<import file="common-build.xml" />
+
+
+	<!-- The class path used to compile java source files -->
+	<path id="classpath">
+		<path refid="classpath" />
+		<pathelement location="${ant.home}/lib/ant.jar" />
+	</path>
+
+	<!-- The class path used to compile junit tests -->
+	<path id="test.classpath"></path>
+
+	<!-- The class path used to run junit tests -->
+	<path id="junit.classpath"></path>
+
+
+
+
+	<!-- *************************************
+		SRC: create archive of source files
+		************************************** -->
+	<target name="src">
+		<delete dir="${src.dist}"></delete>
+		<mkdir dir="${src.dist}" />
+		<copy todir="${src.dist}" overwrite="true">
+			<fileset dir="src">
+				<include name="**/*.java" />
+				<include name="**/*.properties" />
+			</fileset>
+		</copy>
+		<copy overwrite="yes" file="LICENSE"
+			tofile="${src.dist}/LICENSE" />
+		<copy overwrite="yes" file="NOTICE" tofile="${src.dist}/NOTICE" />
+
+		<tar compression="bzip2" destfile="${src.dist}.tar.bz2">
+			<fileset dir="${src.dist}"></fileset>
+		</tar>
+
+		<checksum file="${src.dist}.tar.bz2" algorithm="MD5"
+			fileext=".md5" />
+		<checksum file="${src.dist}.tar.bz2" algorithm="SHA"
+			fileext=".sha" />
+		<delete dir="${src.dist}"></delete>
+	</target>
+
+	<!-- ************************************************
+		SRC-TEST: create archive of JUnit source files
+		************************************************* -->
+	<target name="src-test">
+		<delete dir="${src-test.dist}"></delete>
+		<mkdir dir="${src-test.dist}" />
+		<copy todir="${src-test.dist}" overwrite="true">
+			<fileset dir="test">
+				<include name="**/*.java" />
+				<include name="**/*.properties" />
+			</fileset>
+		</copy>
+		<copy overwrite="yes" file="LICENSE"
+			tofile="${src-test.dist}/LICENSE" />
+		<copy overwrite="yes" file="NOTICE"
+			tofile="${src-test.dist}/NOTICE" />
+
+		<tar compression="bzip2" destfile="${src-test.dist}.tar.bz2">
+			<fileset dir="${src-test.dist}"></fileset>
+		</tar>
+
+		<checksum file="${src-test.dist}.tar.bz2" algorithm="MD5"
+			fileext=".md5" />
+		<checksum file="${src-test.dist}.tar.bz2" algorithm="SHA"
+			fileext=".sha" />
+		<delete dir="${src-test.dist}"></delete>
+	</target>
+	
+	<target name="apt">
+		
+	</target>
+
+	<!-- **********************************************
+		JAVADOC: Generate javadoc and create archive
+		*********************************************** -->
+	<target name="javadoc" description="Generate javadoc">
+		<delete dir="doc" />
+		<javadoc author="true" destdir="doc"
+			classpath="${build.classpath}">
+			<fileset dir="src" />
+		</javadoc>
+		<tar compression="bzip2" destfile="${javadoc.dist}.tar.bz2">
+			<fileset dir="doc" />
+		</tar>
+	</target>
+
+	<!-- ***************************
+		BUILD: build source files
+		**************************** -->
+	<target name="build">
+		<mkdir dir="${build.dist}" />
+		<javac classpath="${build.classpath}" destdir="${build.dist}"
+			failonerror="false" optimize="true" srcdir="src" />
+		<copy overwrite="yes" file="LICENSE"
+			tofile="${build.dist}/LICENSE" />
+		<copy overwrite="yes" file="NOTICE"
+			tofile="${build.dist}/NOTICE" />
+		<jar basedir="${build.dist}" destfile="${build.dist}.jar" />
+		<delete dir="${build.dist}" />
+	</target>
+
+	<!-- ******************************
+		BUILD-TEST: build tests
+		******************************* -->
+	<target depends="build" name="build-test">
+		<mkdir dir="${build-test.dist}" />
+		<javac classpath="${build-test.classpath}:${build.jar}"
+			destdir="${build-test.dist}" failonerror="false" optimize="true"
+			srcdir="test" />
+		<copy overwrite="yes" file="LICENSE"
+			tofile="${build-test.dist}/LICENSE" />
+		<copy overwrite="yes" file="NOTICE"
+			tofile="${build-test.dist}/NOTICE" />
+		<jar basedir="${build-test.dist}"
+			destfile="${build-test.dist}.jar" />
+		<delete dir="${build-test.dist}" />
+	</target>
+
+	<!-- ***************************************
+		CLEAN: delete all generated files
+		**************************************** -->
+	<target name="clean">
+		<delete dir="doc" />
+		<delete dir="${dist.dir}" />
+	</target>
+
+	<!-- ************************************
+		BUILD-ALL: clean and build all
+		************************************* -->
+	<target depends="clean" name="build-all">
+		<antcall target="src" />
+		<antcall target="src-test" />
+		<antcall target="javadoc" />
+		<antcall target="build-test" />
+	</target>
+
+
+</project>

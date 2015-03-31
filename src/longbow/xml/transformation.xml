@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<transformation package="com.msfcore.dbutils" class="GetConnection">
+	<description>
+		javadoc description for the transformation
+		
+		on a little longer term, support must be added for context sensitive changes to the transformation in design time.
+	</description>
+	<import 
+		class="java.sql.DriverManager"/>
+	<!-- it must be possible to omit wrappers -->
+	<!-- it must be possible to use any kind of metadata, not only medal metadata -->
+	<input 
+		id="username" 
+		medal="class is java.lang.String"
+		class="String"
+		description="Username for the db connection"
+		checkVersion="true" />
+	<input 
+		id="password" 
+		medal="class is java.lang.String"
+		class="String"
+		description="Password for the db connection"
+		checkVersion="true" />
+	<input 
+		id="driverClass" 
+		medal="class is java.lang.String"
+		class="String"
+		description="The driver to load to establish the connection"
+		checkVersion="true" />
+	<input 
+		id="jdbcurl" 
+		medal="class is java.lang.String"
+		class="String"
+		description="The JDBC URL that defines the location of the database to connect to"
+		checkVersion="true" />
+
+	<!--
+		Versioning is interesting for objects that are expensive to create. 
+		Both the connected input and output must make use of versioning 
+		to take advantage of this feature 
+		
+		Here is how it works:
+		An output always lets its output wrapper know that its value is updated.
+		The wrapper keeps track of a version number (lolly number?) for its contained data. 
+		Every time it's updated, the version number is incremented.
+		
+		A transformation with a versioned input keeps track of the version number of the input.
+		If the version number is changed, it should be re-read.
+		
+		
+		Object reference or equality checking is not suitable for the purpose of avoiding
+		expensive creations:
+		==> the same reference can point to e.g. the same collection or array, 
+			of which one or more values are updated.
+		==> deep equals checking can be expensive
+		
+		Note for philosophers:
+			Version checking is an extension of the concept of pointers. See the DataWrapper javadoc for more details.
+	-->
+	<output 
+		id="connection"
+		medal="class is java.sql.Connection and is not null"
+		class="java.sql.Connection"
+		description="A connection created according to the input data" 
+		versioned="true" />
+		
+	<!-- The optional startExecution element allows a programmer to fine tune the initialization of a transformation -->
+	<startExecution><![CDATA[
+		// this code will be appended after the standard initialization of the inputs and outputs
+		]]></startExecution>
+	
+
+	<importData><![CDATA[
+		// this code will be appended after standard import of data from the inputs
+		// standard import is omitted for inputs where indicated
+	]]></importData>
+
+	<!-- Following code will be placed in the content block of the processData() method. -->
+	<!-- the processData element is required. -->
+	<processData><![CDATA[
+		// this is the content of the processData() method.
+	]]></processData>
+	
+	<exportData><![CDATA[
+		// this code will be added before the standard export of data
+		// standard export will be executed for outputs that don't omit it.
+	]]></exportData>
+
+	<!-- The optional stopExecution elements allows a programmer to fine tune the termination of a transformation -->
+	<stopExecution><![CDATA[
+		// this code will be added before standard finalization in the stopExecution() method
+	]]></stopExecution>
+
+</transformation>

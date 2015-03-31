@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.vanoosten.be/2008/longbow">
+    <xs:attributeGroup name="fullyQualifiedClassName">
+        <xs:annotation>
+            <xs:documentation>
+                This attribute group can be used for elements that require a fully qualified class name for any purpose.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:attribute name="package" use="optional" default="java.lang"/>
+        <xs:attribute name="class" use="required" type="xs:NMTOKEN" />
+    </xs:attributeGroup>
+    
+</xs:schema>

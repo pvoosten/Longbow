@@ -1,0 +1,381 @@
+/*
+ * Copyright 2008 Philip van Oosten (Mentoring Systems BVBA)
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ * 
+ */
+ 
+options {
+  STATIC = false;
+  IGNORE_CASE = true;
+  JDK_VERSION = "1.5";
+}
+
+PARSER_BEGIN(Medal)
+/*
+ * Copyright 2008 Philip van Oosten (Mentoring Systems BVBA)
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ * 
+ */
+ 
+package longbow.metadata;
+
+import longbow.LongbowException;
+import longbow.Metadata;
+import longbow.Transformation;
+import longbow.LongbowException;
+import longbow.Metadata;
+import longbow.TransformationContext;
+import longbow.Workflow;
+import longbow.transformations.Getter;
+import longbow.transformations.Setter;
+import longbow.core.DefaultWorkflow;
+import static longbow.metadata.MedalMetadata.*;
+import static longbow.metadata.BinaryOperatorTransformation.*;
+
+/**
+ * Medal is the Metadata Definition Language, 
+ * a scripting language to quickly define Metadata for use in Longbow.
+ * 
+ * @author Philip van Oosten
+ * 
+ */
+class Medal {
+	
+	private Setter dataSetter;
+	private Setter metadataSetter;
+	private TransformationContext ctxDataSetter;
+	private TransformationContext ctxMetadataSetter;
+	
+	private Getter acceptDataGetter;
+	private Getter acceptsGetter;
+	private Getter isAcceptedGetter;
+	
+	private Workflow checker;
+		
+	TransformationContext addLeafMetadata(Metadata metadata) throws ParseException {
+		TransformationContext ctx = checker.add(new MetadataTransformation(metadata));
+		if(!checker.connect(ctxDataSetter, Setter.OUT_DATA, ctx, MetadataTransformation.IN_DATA))
+			throw new ParseException("Can't connect data setter");
+		if(!checker.connect(ctxMetadataSetter, Setter.OUT_DATA, ctx, MetadataTransformation.IN_METADATA))
+			throw new ParseException("Can't connect metadata setter");
+		return ctx;
+	}
+
+	private TransformationContext connectBinaryOperator(TransformationContext former, TransformationContext latter, Transformation operator) throws ParseException {
+		TransformationContext ctxOperator = checker.add(operator);
+		if(!checker.connect(former, OUT_ACCEPT_DATA, ctxOperator, IN_FORMER_ACCEPT_DATA))
+			throw new ParseException("Can't connect operator");
+		if(!checker.connect(former, OUT_ACCEPT_METADATA, ctxOperator, IN_FORMER_ACCEPT_METADATA))
+			throw new ParseException("Can't connect operator");
+		if(!checker.connect(former, OUT_IS_METADATA_ACCEPTED, ctxOperator, IN_FORMER_IS_METADATA_ACCEPTED))
+			throw new ParseException("Can't connect operator");
+		if(!checker.connect(latter, OUT_ACCEPT_DATA, ctxOperator, IN_LATTER_ACCEPT_DATA))
+			throw new ParseException("Can't connect operator");
+		if(!checker.connect(latter, OUT_ACCEPT_METADATA, ctxOperator, IN_LATTER_ACCEPT_METADATA))
+			throw new ParseException("Can't connect operator");
+		if(!checker.connect(latter, OUT_IS_METADATA_ACCEPTED, ctxOperator, IN_LATTER_IS_METADATA_ACCEPTED))
+			throw new ParseException("Can't connect operator");
+		return ctxOperator;
+	}
+	
+	private TransformationContext not(TransformationContext ctx) throws ParseException {
+		TransformationContext operator = checker.add(new NotTransformation());
+		// connect the not-transformation to the outputs of ctx
+		if (!checker.connect(ctx, OUT_ACCEPT_DATA, operator, NotTransformation.IN_ACCEPT_DATA))
+			throw new ParseException("Can't connect not operator");
+		if (!checker.connect(ctx, OUT_ACCEPT_METADATA, operator, NotTransformation.IN_ACCEPT_METADATA))
+			throw new ParseException("Can't connect not operator");
+		if (!checker.connect(ctx, OUT_IS_METADATA_ACCEPTED, operator, NotTransformation.IN_IS_METADATA_ACCEPTED))
+			throw new ParseException("Can't connect not operator");
+		return operator;
+	}
+	
+	Setter getDataSetter(){
+		return dataSetter;
+	}
+	
+	Setter getMetadataSetter(){
+		return metadataSetter;
+	}
+	
+	Getter getAcceptDataGetter(){
+		return acceptDataGetter;
+	}
+	
+	Getter getAcceptsMetadataGetter(){
+		return acceptsGetter;
+	}
+	
+	Getter getIsAcceptedGetter(){
+		return isAcceptedGetter;
+	}
+	
+	/**
+	 * A reference to the workflow is necessary to avoid GC of the workflow. 
+	 */
+	Workflow getChecker(){
+		return checker;
+	}
+	
+}
+
+PARSER_END(Medal)
+
+/* Skip white space */
+<DEFAULT> SKIP:	
+{
+	" "
+	|
+	"\n"
+	|
+	"\r"
+	|
+	"\t"
+}
+
+/* Token delimiters */
+<DEFAULT> TOKEN:	{
+	<#WHITE: (" "|"\n"|"\r"|"\t")+ >
+	|
+	<#LETTER: ["a"-"z", "A"-"Z", "0"-"9", "_"] >
+	|
+	<LEFT_BRACKET: "(" >
+	|
+	<RIGHT_BRACKET: ")" >
+}
+
+/* Keywords */
+<DEFAULT> TOKEN:	{
+	<AND: "AND">
+	|
+	<OR: "OR">
+	|
+	<NAND: "NAND">
+	|
+	<NOR: "NOR">
+	|
+	<XOR: "XOR">
+	|
+	<NOT: "NOT">
+	|
+	<ACCEPT_ALL: (
+		"ALLOW" <WHITE> "ALL"
+		)|(
+		"DISALLOW" <WHITE> "NONE"
+		)|(
+		"ACCEPT" <WHITE> "ALL"
+	)>
+	|
+	<ACCEPT_NONE: (
+		"ALLOW" <WHITE> "NONE"
+		)|(
+		"DISALLOW" <WHITE> "ALL"
+		)|(
+		"ACCEPT" <WHITE> "NONE"
+	)>
+	|
+	<TYPE_IS : (
+		(("TYPE"|"CLASS") (<WHITE> "NAME")? (<WHITE> "IS")?)
+		|
+		("SUBTYPE" <WHITE> "OF")
+		|
+		(("IS" <WHITE> "OF" | "HAS") <WHITE> "TYPE")
+		|
+		((("CLASS"|"TYPE") <WHITE>)? "IS" <WHITE> "A")
+	)>
+	|
+	<NOT_NULL : (
+		("IS" <WHITE>)? ("NOT"|"NEVER") <WHITE> "NULL"
+	)>
+	|
+	<CLASSNAME: (
+		(<LETTER>)+("."(<LETTER>)+)*
+	)>
+}
+
+void Parse() :
+{
+	checker = new DefaultWorkflow();
+	
+	dataSetter = new Setter(BootstrapMetadata.getDataMetadata());
+	metadataSetter = new Setter(BootstrapMetadata.getMetadataMetadata());
+	// inject any kind of metadata, to let metadataSetter be executable
+	metadataSetter.inject(BootstrapMetadata.getMetadataMetadata()); // :) ;)
+	
+	ctxDataSetter = checker.add(dataSetter);
+	ctxMetadataSetter = checker.add(metadataSetter);
+	
+	TransformationContext ctx;
+}
+{
+	ctx = OrClause()
+	<EOF>
+	{
+		acceptDataGetter = new Getter(BootstrapMetadata.getBooleanMetadata());
+		acceptsGetter = new Getter(BootstrapMetadata.getBooleanMetadata());
+		isAcceptedGetter = new Getter(BootstrapMetadata.getBooleanMetadata());
+	
+		TransformationContext ctxAcceptDataGetter = checker.add(acceptDataGetter);
+		TransformationContext ctxAcceptsGetter = checker.add(acceptsGetter);
+		TransformationContext ctxIsAcceptedGetter = checker.add(isAcceptedGetter);
+
+		if (! checker.connect(ctx, OUT_ACCEPT_DATA, ctxAcceptDataGetter, Getter.IN_DATA))
+			throw new ParseException("Can't connect getter");
+		if (!checker.connect(ctx, OUT_ACCEPT_METADATA, ctxAcceptsGetter, Getter.IN_DATA))
+			throw new ParseException("Can't connect getter");
+		if (!checker.connect(ctx, OUT_IS_METADATA_ACCEPTED, ctxIsAcceptedGetter, Getter.IN_DATA))
+			throw new ParseException("Can't connect getter");
+
+		if(!checker.isExecutable()){
+			throw new ParseException("The metadata checker is not executable.");
+		}
+		checker.execute();
+	}
+}
+
+TransformationContext OrClause() :
+{
+	TransformationContext ctx;
+	TransformationContext tmp;
+}
+{
+	ctx = Term()
+	(
+		<OR> tmp = OrClause() 
+		{
+			ctx = connectBinaryOperator(ctx, tmp, new OrTransformation());
+		}
+		|
+		<NOR> tmp = OrClause()
+		{
+			ctx = connectBinaryOperator(ctx, tmp, new NorTransformation());
+		}
+		|
+		<XOR> tmp = OrClause()
+		{
+			ctx = connectBinaryOperator(ctx, tmp, new XorTransformation());
+		}
+	)?
+	{
+		return ctx;
+	}
+}
+
+TransformationContext Term() : 
+{
+	TransformationContext ctx;
+	TransformationContext tmp;
+}
+{
+	ctx = Factor()
+	( 
+		(
+			<AND> 
+			tmp = Factor()
+			{
+			ctx = connectBinaryOperator(ctx, tmp, new AndTransformation());
+			}
+		)
+		|
+		(
+			<NAND> 
+			tmp = Factor()
+			{
+			ctx = connectBinaryOperator(ctx, tmp, new NandTransformation());
+			}
+		)
+	)*
+	{
+		return ctx;
+	}
+}
+
+TransformationContext NotClause() :
+{
+	TransformationContext ctx;
+}
+{
+	<NOT> ctx = Factor()
+	{
+		return not(ctx);
+	}
+}
+
+TransformationContext Factor() :
+{
+	TransformationContext ctx;
+}
+{
+	(
+		<LEFT_BRACKET> 
+		ctx = OrClause() 
+		<RIGHT_BRACKET>
+		|
+		ctx = NotClause()
+		|
+		ctx = LeafClause()
+	)
+	{
+		return ctx;
+	}
+}
+
+TransformationContext LeafClause() :
+{
+	LeafMetadata metadata;
+	Token t;
+}
+{
+	(
+		<ACCEPT_ALL>
+		{
+			metadata = acceptAll();
+		}
+		|
+		<ACCEPT_NONE>
+		{
+			metadata = acceptNone();
+		}
+		|
+		<NOT_NULL>
+		{
+			metadata = notNull();
+		}
+		|
+		<TYPE_IS> t=<CLASSNAME>
+		{
+			final Class<?> cls;
+			try{
+				cls = Class.forName(t.image);
+			} catch(ClassNotFoundException e) {
+				throw new ParseException("The class \""+t.image+"\" could not be found.");
+			}
+			metadata = subClassOf(cls); 
+		}
+	)
+	{
+		return addLeafMetadata(metadata);
+	} 
+}
